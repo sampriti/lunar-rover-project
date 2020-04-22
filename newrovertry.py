@@ -29,19 +29,14 @@ class OffbPosCtl:
     #                           [0, 0, 2, 0, 0, 0]
     #                           ])
 
-    locations = numpy.matrix([[0, 0, 2, 0, 0, -0.48717451, -0.87330464],
-                              [-3, -8, 2, 0, 0, 0.99902148, -0.04422762],
-                              [-4, -4, 2, 0, 0, 1, -0],
-			       [-8, -10, 1, 0, 1, -0.48717451, -0.87330464],
-                              [0, 0, 1, 0, 0, 1, -1],
-                              ])
+   
 
 
 
     def __init__(self):
         rospy.init_node('offboard_test', anonymous=True)
         #pose_pub = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size=10)
-	velocity_publisher = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel', TwistStamped, queue_size=10)
+	velocity_publisher = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel_unstamped', Twist, queue_size=10)
         mocap_sub = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, callback=self.mocap_cb)
         state_sub = rospy.Subscriber('/mavros/state', State, callback=self.state_cb)
 	vel_sub = rospy.Subscriber('/mavros/setpoint_velocity/cmd_vel_unstamped', Twist, callback=self.vel_cb)
@@ -55,11 +50,11 @@ class OffbPosCtl:
 	t0=rospy.Time.now().to_sec()
         #self.des_pose = self.copy_pose(self.curr_pose)
         #shape = self.locations.shape
-	self.vel_msg = TwistStamped()
+	self.vel_msg = Twist()#Stamped()
 	self.vel_msg.twist = Twist() 	
 
-	self.vel_msg.twist.linear.x = 0
-	self.vel_msg.twist.angular.z = 0 
+	self.vel_msg.linear.x = 4
+	self.vel_msg.angular.z = 0 
 
 	#print(self.vel_msg)
         while not rospy.is_shutdown():
@@ -71,9 +66,9 @@ class OffbPosCtl:
             if self.isReadyToFly:
 
                 t1=rospy.Time.now().to_sec()
-		self.vel_msg.twist.linear.x =0.3
+		self.vel_msg.linear.x =3
            	
-        	self.vel_msg.twist.angular.z = 0.0
+        	self.vel_msg.angular.z = 0
 		print("setting velocities")
 		curr_dist=5*(t1-t0)
 		#if(curr_dist>50):
@@ -94,14 +89,14 @@ class OffbPosCtl:
 	    
             rate.sleep()
 	    
-	    #rospy.wait_for_service('mavros/set_mode')
-	    #try:
-    	    #
-    	    #	setModeService = rospy.ServiceProxy('mavros/set_mode', mavros_msgs.srv.SetMode)
-    	    #	setModeService(custom_mode="OFFBOARD")
+	    rospy.wait_for_service('mavros/set_mode')
+	    try:
     	    
-	    #except rospy.ServiceException, e:
-    		#print "Service takeoff call failed: %s"%e
+    	    	setModeService = rospy.ServiceProxy('mavros/set_mode', mavros_msgs.srv.SetMode)
+    	    	setModeService(custom_mode="OFFBOARD")
+    	    
+	    except rospy.ServiceException, e:
+    		print "Service takeoff call failed: %s"%e
 	    
             # Arming the drone
 	    #while not stateMt.state.armed:
@@ -150,6 +145,8 @@ class OffbPosCtl:
         if(msg.mode=='OFFBOARD'):
             self.isReadyToFly = True
             print "readyToFly"
+	else:
+	    print "not ready"
     def setArm(self):
         rospy.wait_for_service('mavros/cmd/arming')
         try:
